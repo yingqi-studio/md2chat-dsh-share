@@ -1,6 +1,6 @@
 {
   "name": "md2chat-dsh-share",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness plugin: share an assistant reply to WeChat, WeCom or email as chat-ready text and images, or export a Word document",
   "license": "MIT",
   "type": "module",
