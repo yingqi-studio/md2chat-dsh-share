@@ -1,4 +1,66 @@
-# md2chat share — DeepSeek Harness plugin
+[中文](#中文) · [English](#english)
+
+# md2chat share
+
+给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（Web 与 Desktop）每条完成的回复加一个 **「分享到聊天」** 按钮。回复里的 Markdown 会走 md2chat 自己的渲染管线——表格、代码、公式、Mermaid 变图片，正文保持文字——再按目标平台需要的样子写进剪贴板。
+
+| 目标 | 剪贴板里得到什么 |
+|---|---|
+| 微信 | 按内容自动决定：没有要转图的块就复制纯文本；正文夹少量图文块时复制一份 HTML 富文本（文字 + 图片）；结构复杂或篇幅很短时生成一张长图 |
+| 企业微信 | 同样的策略，但文字和图片按顺序分段交付——企微输入框不能一次粘贴图文混排。第一段在点击时复制，其余在对话框里逐段复制 |
+| 图片 | 始终是一张长图 `image/png`；超过 md2chat 的像素上限时按行拆成多张 |
+| 邮件 | 可编辑表格的 HTML，外加纯文本备选 |
+| Word | 由本机的 md2chat skill 生成 `.docx`；没装那个 skill 时这一项自动隐藏 |
+
+转换全部在本机完成：只有 Markdown 里的远程 `![](https://…)` 图片会联网，正文不上传。
+
+## 安装
+
+```sh
+dsh plugin add md2chat-dsh-share
+```
+
+也可以直接从仓库装：
+
+```sh
+dsh plugin add github:yingqi-studio/md2chat-dsh-share
+```
+
+需要 DeepSeek Harness Web 或 Desktop。
+
+## 工作原理
+
+- `index.js` —— Host（Node）半边。在 Harness 的连接鉴权围栏内注册三个路由：
+  - `GET /api/md2chat-share/vendor/*`，按需提供 md2chat 的 MathJax、Mermaid、highlight.js；
+  - `GET /api/md2chat-share/health`，返回 Word 导出是否可用；
+  - `POST /api/md2chat-share/word`，加载 md2chat skill 的 `scripts/lib/share-core.mjs`（`MD2CHAT_SKILL_DIR` 可覆盖默认的 `~/.dsh/skills/md2chat`），返回生成好的 `.docx` 路径。
+- `src/client/` —— 浏览器半边。
+  - `index.ts` 往 `conversation.chat.assistant-actions` 槽位注册入口。
+  - `reply.ts` 从 Chat 快照里读出回复的文本块。
+  - `convert.ts` 直接调用 md2chat 的核心文件而不改动它们（`chat-payload.js`、`chat-markdown.js`、`renderers.js`、`table-images.js`、`chat-targets.js`、`clipboard-image.js`），并负责投递策略。
+  - `ShareAction.tsx` 是按钮和对话框。
+- `scripts/build.mjs` 用 esbuild 产出 Harness 客户端 bundle 格式的 `lib/client.js`（`window.__ModuleLoader__.load({ id, factory })`）；React 与 `@deepseek-ai/*` 走壳层的模块表。按需加载的 vendor 渲染器复制到 `lib/vendor/`，由 Host 半边提供。
+
+转换复用了 md2chat 桌面应用的核心文件，所以输出与它一致。对话框打开时开始转换，点击目标即刻写剪贴板；`ClipboardItem` 的 promise 让这次点击的用户激活在较慢的 Mermaid / MathJax 渲染期间保持有效。
+
+## 开发
+
+```sh
+npm install
+npm run build        # lib/client.js + lib/vendor
+npm test             # 构建 + 单元测试
+npm run typecheck
+```
+
+## 限制
+
+- 只转换文本块，与 Harness 内置的「复制」一致。Markdown 里的远程图片会去抓取；本地路径和图片附件暂不支持。
+- 不提供钉钉、飞书的原生剪贴板格式。
+- Word 导出需要同一台机器上有 macOS、Chrome 和 md2chat skill；缺任意一个，该目标自动隐藏。
+
+---
+
+# English
 
 Adds a **Share to chat** button under each finished reply in
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (Web and
@@ -14,16 +76,19 @@ result is written to the clipboard in the shape each destination needs.
 | Email | Editable-table HTML plus the plain-text alternative |
 | Word | A `.docx` built by the local md2chat skill; the target is hidden when that skill is not installed |
 
+Conversion happens on your machine: only remote `![](https://…)` images in the
+Markdown are fetched, the text itself never leaves it.
+
 ## Install
 
 ```sh
-dsh plugin --profile web add md2chat-dsh-share
+dsh plugin add md2chat-dsh-share
 ```
 
-Until the package is on npm, install from the repository:
+Or straight from the repository:
 
 ```sh
-dsh plugin --profile web add github:yingqi-studio/md2chat-dsh-share
+dsh plugin add github:yingqi-studio/md2chat-dsh-share
 ```
 
 ## How it works
