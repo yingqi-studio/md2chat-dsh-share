@@ -57,5 +57,13 @@
   ],
   "engines": {
     "dsh": ">=0.2.1-rc.2"
+  },
+  "homepage": "https://github.com/yingqi-studio/md2chat-dsh-share#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yingqi-studio/md2chat-dsh-share.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yingqi-studio/md2chat-dsh-share/issues"
   }
 }

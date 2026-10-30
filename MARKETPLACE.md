@@ -2,7 +2,7 @@
 
 市场是索引，不是托管。上架 = 公开 npm 包 + 向
 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
-提一个 PR，新增 `data/plugins/<owner>__<repo>.yml`。合并后 dshmarket.com 与
+提一个 PR，新增 `data/plugins/yingqi-studio__md2chat-dsh-share.yml`。合并后 dshmarket.com 与
 DSH 的 Discover 页会自动收录。
 
 ## 卡片文案
@@ -33,16 +33,16 @@ DSH 的 Discover 页会自动收录。
 
 ## 投稿条目
 
-`data/plugins/<owner>__<repo>.yml`：
+`data/plugins/yingqi-studio__md2chat-dsh-share.yml`：
 
 ```yaml
-url: https://github.com/<owner>/<repo>
-name: <owner>/<repo>
+url: https://github.com/yingqi-studio/md2chat-dsh-share
+name: yingqi-studio/md2chat-dsh-share
 category: ui
 description:
   en: 'Adds a Share to chat action under each reply: converts the answer to WeChat/WeCom-ready text, ordered segments or a long image, plus email HTML and Word export.'
   zh: '在每条回复下加「分享到聊天」：把回答转成微信/企微可直接粘贴的文本、分段或长图，并支持邮件 HTML 与 Word。'
-icon: https://raw.githubusercontent.com/<owner>/<repo>/main/assets/icon-180.png
+icon: https://raw.githubusercontent.com/yingqi-studio/md2chat-dsh-share/main/assets/icon-180.png
 ```
 
 - `category` 取 `ui`（在回复操作区加入口）。其他候选：`tools`、`workflow`。
@@ -56,7 +56,7 @@ icon: https://raw.githubusercontent.com/<owner>/<repo>/main/assets/icon-180.png
 npm publish
 
 # 2. 仓库推上去，打 topic
-git remote add origin git@github.com:<owner>/<repo>.git
+git remote add origin git@github.com:yingqi-studio/md2chat-dsh-share.git
 git push -u origin main
 
 # 3. fork awesome-dsh-plugin，加一个 YAML，提 PR
