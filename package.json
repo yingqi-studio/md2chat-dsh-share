@@ -1,8 +1,7 @@
 {
   "name": "md2chat-dsh-share",
   "version": "0.1.0",
-  "private": true,
-  "description": "DeepSeek Harness plugin: share an assistant reply to WeChat, WeCom or email as md2chat chat-ready text and images",
+  "description": "DeepSeek Harness plugin: share an assistant reply to WeChat, WeCom or email as chat-ready text and images, or export a Word document",
   "license": "MIT",
   "type": "module",
   "main": "index.js",
@@ -15,8 +14,7 @@
     "index.js",
     "cordis.patch.yml",
     "lib/client.js",
-    "lib/vendor/**",
-    "lib/native/**"
+    "lib/vendor/**"
   ],
   "dsh": {
     "bundle": {
@@ -45,5 +43,19 @@
     "@types/react": "18.3.31",
     "esbuild": "0.28.2",
     "typescript": "5.9.3"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "wechat",
+    "wecom",
+    "share",
+    "clipboard",
+    "markdown",
+    "md2chat"
+  ],
+  "engines": {
+    "dsh": ">=0.2.1-rc.2"
   }
 }

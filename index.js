@@ -6,7 +6,7 @@
  * highlight.js) and builds Word documents through the md2chat skill's Node
  * pipeline, all inside Connection's authentication fence.
  */
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -17,6 +17,8 @@ export const inject = ['connection']
 /** Route prefix the client points `md2chatVendorBase` at; keep in sync with src/client/convert.ts. */
 export const VENDOR_ROUTE = '/api/md2chat-share/vendor/'
 export const VENDOR_FILES = ['mathjax/tex-svg.js', 'mermaid/mermaid.min.js', 'highlight/highlight.min.js']
+/** GET → {word}; keep in sync with src/client/convert.ts. */
+export const HEALTH_ROUTE = '/api/md2chat-share/health'
 /** POST {markdown} → {ok, path, message}; keep in sync with src/client/convert.ts. */
 export const WORD_ROUTE = '/api/md2chat-share/word'
 
@@ -35,6 +37,16 @@ async function loadShareCore() {
     })
   }
   return shareCore
+}
+
+/** Word export needs the skill's Node pipeline; hide the target instead of failing at click time. */
+export async function wordAvailable() {
+  try {
+    await stat(join(skillDir, 'scripts/lib/share-core.mjs'))
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function handleWord(request) {
@@ -73,6 +85,12 @@ export function apply(ctx) {
       }),
     }), `md2chat-share: ${file}`)
   }
+  ctx.effect(() => ctx.connection.fetch.register({
+    path: HEALTH_ROUTE,
+    methods: ['GET'],
+    requestBody: 'buffered',
+    fetch: async () => Response.json({ word: await wordAvailable() }),
+  }), 'md2chat-share: health')
   ctx.effect(() => ctx.connection.fetch.register({
     path: WORD_ROUTE,
     methods: ['POST'],

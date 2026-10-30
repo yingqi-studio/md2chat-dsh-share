@@ -19,8 +19,20 @@ export type { Payload }
 const VENDOR_ROUTE = '/api/md2chat-share/vendor/'
 ;(globalThis as { md2chatVendorBase?: string }).md2chatVendorBase = VENDOR_ROUTE
 
-/** Host half's Word endpoint (index.js WORD_ROUTE). */
+/** Host half's Word endpoint (index.js WORD_ROUTE) and availability probe. */
 const WORD_ROUTE = '/api/md2chat-share/word'
+const HEALTH_ROUTE = '/api/md2chat-share/health'
+
+/** Word export depends on a local md2chat skill; absent means the target is hidden. */
+export async function wordAvailable(): Promise<boolean> {
+  try {
+    const response = await fetch(HEALTH_ROUTE, { credentials: 'same-origin' })
+    const body = await response.json() as { word?: unknown } | null
+    return body?.word === true
+  } catch {
+    return false
+  }
+}
 
 export const TARGETS = ['wechat', 'wecom', 'image', 'email', 'word'] as const
 export type PluginTarget = (typeof TARGETS)[number]

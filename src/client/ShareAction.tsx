@@ -18,6 +18,7 @@ import {
   copySegment,
   makeWord,
   TARGETS,
+  wordAvailable,
   type Delivery,
   type Payload,
   type PluginTarget,
@@ -76,6 +77,13 @@ function ShareDialog({ source, t, onClose, onCopied }: {
   const [segments, setSegments] = useState<Payload['segments'] | null>(null)
   const [copiedSteps, setCopiedSteps] = useState<number[]>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const [wordReady, setWordReady] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    wordAvailable().then(ok => { if (alive) setWordReady(ok) })
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     if (conversion === null) return
@@ -202,7 +210,7 @@ function ShareDialog({ source, t, onClose, onCopied }: {
       )}
       {segments === null ? (
         <div className="md2chat-share-targets">
-          {TARGETS.map(target => (
+          {TARGETS.filter(target => target !== 'word' || wordReady).map(target => (
             <button
               key={target}
               type="button"

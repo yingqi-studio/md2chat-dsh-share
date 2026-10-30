@@ -33,17 +33,20 @@ test('client bundle uses the Harness module-loader handoff and only shell-provid
 })
 
 test('host half serves vendor files and the Word route', async () => {
-  const { VENDOR_FILES, VENDOR_ROUTE, WORD_ROUTE, apply, inject } = await import('../index.js')
+  const { HEALTH_ROUTE, VENDOR_FILES, VENDOR_ROUTE, WORD_ROUTE, apply, inject } = await import('../index.js')
   assert.deepEqual(inject, ['connection'])
   const routes = []
   apply({ effect: fn => fn(), connection: { fetch: { register: route => { routes.push(route); return async () => {} } } } })
-  assert.deepEqual(routes.map(route => route.path), [...VENDOR_FILES.map(file => VENDOR_ROUTE + file), WORD_ROUTE])
+  assert.deepEqual(routes.map(route => route.path), [...VENDOR_FILES.map(file => VENDOR_ROUTE + file), HEALTH_ROUTE, WORD_ROUTE])
   const response = await routes.find(route => route.path.endsWith('highlight.min.js')).fetch(new Request('http://x/'))
   assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8')
   assert.match(await response.text(), /hljs/)
 
   const renderers = readFileSync(new URL('../../../skills/md2chat/vendor/md2chat/assets/renderers.js', import.meta.url), 'utf8')
   for (const file of VENDOR_FILES) assert(renderers.includes(`'${file}'`), file)
+
+  const health = await routes.find(route => route.path === HEALTH_ROUTE).fetch(new Request('http://x/'))
+  assert.equal(typeof (await health.json()).word, 'boolean')
 
   const word = routes.at(-1)
   assert.deepEqual(word.methods, ['POST'])
