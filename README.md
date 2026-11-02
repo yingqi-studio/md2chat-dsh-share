@@ -47,10 +47,20 @@ dsh plugin add github:yingqi-studio/md2chat-dsh-share
 
 ```sh
 npm install
-npm run build        # lib/client.js + lib/vendor + lib/docx + lib/docx
+npm run build        # lib/client.js + lib/docx（lib/vendor 已随仓库提交）
 npm test             # 构建 + 单元测试
 npm run typecheck
 ```
+
+md2chat 的核心文件（`chat-*.js`、`renderers.js` 等）vendor 在 `vendor/md2chat/`，克隆下来直接就能构建。要刷新 MathJax / Mermaid / highlight.js 的打包产物时，再指一次上游：
+
+```sh
+MD2CHAT_ASSETS=/path/to/md2chat/assets npm run build
+```
+
+## 许可
+
+MIT。随包附带的 md2chat 核心、Marked、MathJax、Mermaid 与 highlight.js 的第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 限制
 
@@ -125,10 +135,23 @@ activation alive across slow Mermaid/MathJax renders.
 
 ```sh
 npm install
-npm run build        # lib/client.js + lib/vendor + lib/docx + lib/docx
+npm run build        # lib/client.js + lib/docx (lib/vendor is committed)
 npm test             # build, then unit tests
 npm run typecheck
 ```
+
+md2chat's core files (`chat-*.js`, `renderers.js`, …) are vendored under
+`vendor/md2chat/`, so a clone builds as-is. To refresh the MathJax / Mermaid /
+highlight.js bundles, point at the upstream app:
+
+```sh
+MD2CHAT_ASSETS=/path/to/md2chat/assets npm run build
+```
+
+## License
+
+MIT. Third-party notices for the bundled md2chat core, Marked, MathJax, Mermaid
+and highlight.js are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Limitations
 
