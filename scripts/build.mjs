@@ -19,19 +19,23 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const VENDOR_FILES = ['mathjax/tex-svg.js', 'mermaid/mermaid.min.js', 'highlight/highlight.min.js']
 // The md2chat core lives in the md2chat skill's vendored copy; override with
 // MD2CHAT_ASSETS when the skill sits somewhere else.
-const assets = process.env.MD2CHAT_ASSETS
-  ? resolve(process.env.MD2CHAT_ASSETS)
-  : resolve(root, '../../skills/md2chat/vendor/md2chat/assets')
+// The md2chat core files this bundle links against are vendored in the repo,
+// so a clone builds without the md2chat app checkout.
+const core = join(root, 'vendor/md2chat')
+// Only refreshing lib/vendor needs the upstream app (MD2CHAT_ASSETS); a plain
+// build keeps the committed copies.
+const upstream = process.env.MD2CHAT_ASSETS ? resolve(process.env.MD2CHAT_ASSETS) : null
 const { name: id } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const watch = process.argv.includes('--watch')
 
 // Host-side Word writer: plain ESM, copied as-is next to the client bundle.
 cpSync(join(root, 'src/docx'), join(root, 'lib/docx'), { recursive: true })
 
-mkdirSync(join(root, 'lib/vendor'), { recursive: true })
-for (const file of VENDOR_FILES) {
-  cpSync(join(assets, 'vendor', file), join(root, 'lib/vendor', file))
-  cpSync(join(assets, 'vendor', dirname(file), 'LICENSE'), join(root, 'lib/vendor', dirname(file), 'LICENSE'))
+if (upstream !== null) {
+  for (const file of VENDOR_FILES) {
+    cpSync(join(upstream, 'vendor', file), join(root, 'lib/vendor', file))
+    cpSync(join(upstream, 'vendor', dirname(file), 'LICENSE'), join(root, 'lib/vendor', dirname(file), 'LICENSE'))
+  }
 }
 
 const options = {
@@ -44,7 +48,7 @@ const options = {
   jsx: 'automatic',
   // Shell module table rows (packages/client/web/src/platform.ts PLATFORM_MODULES and dsh.client.inject packages).
   external: ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', 'zod', '@deepseek-ai/*'],
-  alias: { 'md2chat-core': assets },
+  alias: { 'md2chat-core': core },
   define: { 'process.env.NODE_ENV': '"production"' },
   legalComments: 'none',
   logLevel: 'info',

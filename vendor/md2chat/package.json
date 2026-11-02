@@ -1,0 +1,4 @@
+{
+  "//": "md2chat core files are UMD; keep them CommonJS inside this ESM package.",
+  "type": "commonjs"
+}
