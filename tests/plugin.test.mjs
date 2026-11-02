@@ -32,25 +32,28 @@ test('client bundle uses the Harness module-loader handoff and only shell-provid
   assert.deepEqual([...externals].sort(), ['@deepseek-ai/dsh-client-ui-primitives', 'react', 'react/jsx-runtime'])
 })
 
-test('host half serves vendor files and the Word route', async () => {
-  const { HEALTH_ROUTE, VENDOR_FILES, VENDOR_ROUTE, WORD_ROUTE, apply, inject } = await import('../index.js')
+test('host half serves vendor files and builds Word documents in-process', async () => {
+  const { VENDOR_FILES, VENDOR_ROUTE, WORD_ROUTE, apply, inject } = await import('../index.js')
   assert.deepEqual(inject, ['connection'])
   const routes = []
   apply({ effect: fn => fn(), connection: { fetch: { register: route => { routes.push(route); return async () => {} } } } })
-  assert.deepEqual(routes.map(route => route.path), [...VENDOR_FILES.map(file => VENDOR_ROUTE + file), HEALTH_ROUTE, WORD_ROUTE])
+  assert.deepEqual(routes.map(route => route.path), [...VENDOR_FILES.map(file => VENDOR_ROUTE + file), WORD_ROUTE])
+
   const response = await routes.find(route => route.path.endsWith('highlight.min.js')).fetch(new Request('http://x/'))
   assert.equal(response.headers.get('content-type'), 'text/javascript; charset=utf-8')
   assert.match(await response.text(), /hljs/)
 
-  const renderers = readFileSync(new URL('../../../skills/md2chat/vendor/md2chat/assets/renderers.js', import.meta.url), 'utf8')
-  for (const file of VENDOR_FILES) assert(renderers.includes(`'${file}'`), file)
-
-  const health = await routes.find(route => route.path === HEALTH_ROUTE).fetch(new Request('http://x/'))
-  assert.equal(typeof (await health.json()).word, 'boolean')
-
   const word = routes.at(-1)
   assert.deepEqual(word.methods, ['POST'])
-  const rejected = await word.fetch(new Request('http://x/', { method: 'POST', body: JSON.stringify({}) }))
-  assert.equal(rejected.status, 400)
-  assert.equal((await rejected.json()).ok, false)
+  const empty = await word.fetch(new Request('http://x/', { method: 'POST', body: JSON.stringify({}) }))
+  assert.equal(empty.status, 400)
+  assert.equal((await empty.json()).ok, false)
+
+  const built = await word.fetch(new Request('http://x/', { method: 'POST', body: JSON.stringify({ markdown: '# 标题\n\n正文。' }) }))
+  assert.equal(built.status, 200)
+  assert.equal(built.headers.get('content-type'), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+  assert.match(built.headers.get('content-disposition'), /filename\*=UTF-8''/)
+  const bytes = Buffer.from(await built.arrayBuffer())
+  assert.equal(bytes.subarray(0, 2).toString('latin1'), 'PK')
+  assert(bytes.length > 1000)
 })

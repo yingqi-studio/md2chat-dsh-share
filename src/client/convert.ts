@@ -19,20 +19,8 @@ export type { Payload }
 const VENDOR_ROUTE = '/api/md2chat-share/vendor/'
 ;(globalThis as { md2chatVendorBase?: string }).md2chatVendorBase = VENDOR_ROUTE
 
-/** Host half's Word endpoint (index.js WORD_ROUTE) and availability probe. */
+/** Host half's Word endpoint (index.js WORD_ROUTE). */
 const WORD_ROUTE = '/api/md2chat-share/word'
-const HEALTH_ROUTE = '/api/md2chat-share/health'
-
-/** Word export depends on a local md2chat skill; absent means the target is hidden. */
-export async function wordAvailable(): Promise<boolean> {
-  try {
-    const response = await fetch(HEALTH_ROUTE, { credentials: 'same-origin' })
-    const body = await response.json() as { word?: unknown } | null
-    return body?.word === true
-  } catch {
-    return false
-  }
-}
 
 export const TARGETS = ['wechat', 'wecom', 'image', 'email', 'word'] as const
 export type PluginTarget = (typeof TARGETS)[number]
@@ -182,20 +170,40 @@ export async function copyLongImage(payload: Promise<Payload>): Promise<void> {
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
 }
 
-export interface WordResult { path: string; message: string }
+export interface WordFile { blob: Blob; filename: string }
 
 /**
- * Ask the Host half to build a real .docx through the md2chat skill pipeline.
- * Conversion runs in Node (headless Chrome), so the reply can be long and the
- * document keeps editable tables.
+ * Ask the Host half to build a .docx. The document is assembled in plain Node
+ * from the reply's Markdown (no Chrome, no local skill), so it works the same
+ * on macOS, Windows and Linux; the bytes come back for the browser to save.
  */
-export async function makeWord(markdownSource: string): Promise<WordResult> {
+export async function makeWord(markdownSource: string): Promise<WordFile> {
   const response = await fetch(WORD_ROUTE, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ markdown: markdownSource }),
   })
-  const body = await response.json().catch(() => null) as { ok?: boolean; path?: string; message?: string; error?: string } | null
-  if (body?.ok !== true || typeof body.path !== 'string') throw new Error(body?.error ?? 'HTTP ' + response.status)
-  return { path: body.path, message: body.message ?? `已生成 Word 文档：${body.path}` }
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null
+    throw new Error(body?.error ?? 'HTTP ' + response.status)
+  }
+  const disposition = response.headers.get('content-disposition') ?? ''
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1]
+  return {
+    blob: await response.blob(),
+    filename: encoded ? decodeURIComponent(encoded) : 'md2chat.docx',
+  }
+}
+
+/** Save a blob through a temporary link; the download lands in the browser's folder. */
+export function saveFile(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.rel = 'noopener'
+  document.body.append(anchor)
+  anchor.click()
+  anchor.remove()
+  setTimeout(() => { URL.revokeObjectURL(url) }, 60_000)
 }

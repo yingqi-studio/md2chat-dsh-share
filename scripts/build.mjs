@@ -13,9 +13,11 @@ import { cpSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as esbuild from 'esbuild'
-import { VENDOR_FILES } from '../index.js'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+// Keep in sync with index.js VENDOR_FILES; not imported so the build still runs
+// before lib/docx exists (the host imports the Word writer statically).
+const VENDOR_FILES = ['mathjax/tex-svg.js', 'mermaid/mermaid.min.js', 'highlight/highlight.min.js']
 // The md2chat core lives in the md2chat skill's vendored copy; override with
 // MD2CHAT_ASSETS when the skill sits somewhere else.
 const assets = process.env.MD2CHAT_ASSETS
@@ -23,6 +25,9 @@ const assets = process.env.MD2CHAT_ASSETS
   : resolve(root, '../../skills/md2chat/vendor/md2chat/assets')
 const { name: id } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const watch = process.argv.includes('--watch')
+
+// Host-side Word writer: plain ESM, copied as-is next to the client bundle.
+cpSync(join(root, 'src/docx'), join(root, 'lib/docx'), { recursive: true })
 
 mkdirSync(join(root, 'lib/vendor'), { recursive: true })
 for (const file of VENDOR_FILES) {

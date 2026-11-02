@@ -10,7 +10,7 @@
 | 企业微信 | 同样的策略，但文字和图片按顺序分段交付——企微输入框不能一次粘贴图文混排。第一段在点击时复制，其余在对话框里逐段复制 |
 | 图片 | 始终是一张长图 `image/png`；超过 md2chat 的像素上限时按行拆成多张 |
 | 邮件 | 可编辑表格的 HTML，外加纯文本备选 |
-| Word | 由本机的 md2chat skill 生成 `.docx`；没装那个 skill 时这一项自动隐藏 |
+| Word | 直接下载 `.docx`：表格、列表、代码块都是 Word 原生可编辑结构，不经过浏览器渲染 |
 
 转换全部在本机完成：只有 Markdown 里的远程 `![](https://…)` 图片会联网，正文不上传。
 
@@ -32,8 +32,8 @@ dsh plugin add github:yingqi-studio/md2chat-dsh-share
 
 - `index.js` —— Host（Node）半边。在 Harness 的连接鉴权围栏内注册三个路由：
   - `GET /api/md2chat-share/vendor/*`，按需提供 md2chat 的 MathJax、Mermaid、highlight.js；
-  - `GET /api/md2chat-share/health`，返回 Word 导出是否可用；
-  - `POST /api/md2chat-share/word`，加载 md2chat skill 的 `scripts/lib/share-core.mjs`（`MD2CHAT_SKILL_DIR` 可覆盖默认的 `~/.dsh/skills/md2chat`），返回生成好的 `.docx` 路径。
+  - `POST /api/md2chat-share/word`，把回复的 Markdown 解析成块，用内置的 OOXML 生成器写出 `.docx` 字节流。
+- `src/docx/` —— Word 导出，纯 Node、零依赖、无子进程：`markdown.mjs` 解析块与行内样式，`ooxml.mjs` 拼 `document.xml` / `styles.xml` / `numbering.xml`，`zip.mjs` 手写 ZIP，`index.mjs` 抓取远程图片并装配全部 part。不依赖 Chrome、不需要 macOS，Windows 和 Linux 上一样能用。
 - `src/client/` —— 浏览器半边。
   - `index.ts` 往 `conversation.chat.assistant-actions` 槽位注册入口。
   - `reply.ts` 从 Chat 快照里读出回复的文本块。
@@ -47,7 +47,7 @@ dsh plugin add github:yingqi-studio/md2chat-dsh-share
 
 ```sh
 npm install
-npm run build        # lib/client.js + lib/vendor
+npm run build        # lib/client.js + lib/vendor + lib/docx + lib/docx
 npm test             # 构建 + 单元测试
 npm run typecheck
 ```
@@ -56,7 +56,7 @@ npm run typecheck
 
 - 只转换文本块，与 Harness 内置的「复制」一致。Markdown 里的远程图片会去抓取；本地路径和图片附件暂不支持。
 - 不提供钉钉、飞书的原生剪贴板格式。
-- Word 导出需要同一台机器上有 macOS、Chrome 和 md2chat skill；缺任意一个，该目标自动隐藏。
+- Word 导出只认 PNG / JPEG / GIF 图片，WebP 会被丢弃；公式保持原始 LaTeX 文本，不转成 Word 公式对象。
 
 ---
 
@@ -74,7 +74,7 @@ result is written to the clipboard in the shape each destination needs.
 | WeCom | The same policy, but text and images are delivered as ordered segments — the WeCom input cannot mix them in one paste. The first segment is copied on click, the rest one by one from the dialog |
 | Image | Always one long `image/png`, split at line breaks into several images when it exceeds md2chat's pixel limit |
 | Email | Editable-table HTML plus the plain-text alternative |
-| Word | A `.docx` built by the local md2chat skill; the target is hidden when that skill is not installed |
+| Word | A `.docx` download: tables, lists and code blocks stay native, editable Word structure — nothing is rasterised |
 
 Conversion happens on your machine: only remote `![](https://…)` images in the
 Markdown are fetched, the text itself never leaves it.
@@ -97,10 +97,13 @@ dsh plugin add github:yingqi-studio/md2chat-dsh-share
   authentication fence it registers:
   - `GET /api/md2chat-share/vendor/*`, serving md2chat's lazily loaded MathJax,
     Mermaid and highlight.js bundles;
-  - `GET /api/md2chat-share/health`, reporting whether Word export is available;
-  - `POST /api/md2chat-share/word`, which imports the md2chat skill's
-    `scripts/lib/share-core.mjs` (`MD2CHAT_SKILL_DIR` overrides the default
-    `~/.dsh/skills/md2chat`) and returns the generated `.docx` path.
+  - `POST /api/md2chat-share/word`, which parses the reply's Markdown into blocks
+    and writes `.docx` bytes with a built-in OOXML writer.
+- `src/docx/` — Word export, plain Node, no dependencies and no subprocesses:
+  `markdown.mjs` parses blocks and inline styles, `ooxml.mjs` assembles
+  `document.xml` / `styles.xml` / `numbering.xml`, `zip.mjs` writes the ZIP, and
+  `index.mjs` fetches remote images and lays out the package. No Chrome and no
+  macOS: it works the same on Windows and Linux.
 - `src/client/` — the browser half.
   - `index.ts` registers an entry in the `conversation.chat.assistant-actions` slot.
   - `reply.ts` reads the reply's text blocks from the Chat snapshot.
@@ -122,7 +125,7 @@ activation alive across slow Mermaid/MathJax renders.
 
 ```sh
 npm install
-npm run build        # lib/client.js + lib/vendor
+npm run build        # lib/client.js + lib/vendor + lib/docx + lib/docx
 npm test             # build, then unit tests
 npm run typecheck
 ```
@@ -133,5 +136,5 @@ npm run typecheck
   Remote `![](https://…)` images in the Markdown are fetched; local paths and
   image attachments are not supported yet.
 - DingTalk and Feishu native clipboard formats are not part of this plugin.
-- Word export needs macOS, Chrome and the md2chat skill on the same machine;
-  without it the target is hidden.
+- Word export embeds PNG / JPEG / GIF images only; WebP is dropped. Formulas
+  stay as LaTeX text instead of becoming native Word equations.
