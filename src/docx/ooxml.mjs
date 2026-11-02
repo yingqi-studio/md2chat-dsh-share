@@ -29,26 +29,35 @@ const emit = (value) => String(value ?? '')
 
 const HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
 
+const BULLETS = ['•', '•', '•']
+
+/**
+ * East Asian body font. Word substitutes missing fonts, but LibreOffice and
+ * some viewers fall back to the Latin face, which has no CJK glyphs at all, so
+ * name a font that ships with the platform the document was generated on.
+ */
+const CJK_FONT = process.platform === 'darwin' ? 'PingFang SC'
+  : process.platform === 'win32' ? 'Microsoft YaHei'
+  : 'Noto Sans CJK SC'
+
 const STYLES = HEADER + `<w:styles xmlns:w="${NS.w}">
 <w:docDefaults>
-<w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="等线" w:cs="Calibri"/><w:sz w:val="21"/><w:szCs w:val="21"/><w:lang w:val="en-US" w:eastAsia="zh-CN"/></w:rPr></w:rPrDefault>
+<w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="${CJK_FONT}" w:cs="Calibri"/><w:sz w:val="21"/><w:szCs w:val="21"/><w:lang w:val="en-US" w:eastAsia="zh-CN"/></w:rPr></w:rPrDefault>
 <w:pPrDefault><w:pPr><w:spacing w:after="140" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault>
 </w:docDefaults>
 <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
 <w:style w:type="paragraph" w:styleId="Title"><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:before="0" w:after="240"/></w:pPr><w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/><w:color w:val="1F2328"/></w:rPr></w:style>
 ${[1, 2, 3, 4, 5, 6].map(level => `<w:style w:type="paragraph" w:styleId="Heading${level}"><w:name w:val="heading ${level}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="${level === 1 ? 360 : 280}" w:after="140"/><w:outlineLvl w:val="${level - 1}"/></w:pPr><w:rPr><w:b/><w:sz w:val="${HEADING_HALF_POINTS[level]}"/><w:szCs w:val="${HEADING_HALF_POINTS[level]}"/><w:color w:val="1F2328"/></w:rPr></w:style>`).join('\n')}
 <w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="60" w:after="140"/><w:ind w:left="420"/><w:pBdr><w:left w:val="single" w:sz="18" w:space="10" w:color="D0D7DE"/></w:pBdr></w:pPr><w:rPr><w:color w:val="57606A"/></w:rPr></w:style>
-<w:style w:type="paragraph" w:styleId="Code"><w:name w:val="Code"/><w:basedOn w:val="Normal"/><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="F6F8FA"/><w:spacing w:before="0" w:after="0" w:line="260" w:lineRule="auto"/><w:ind w:left="120" w:right="120"/></w:pPr><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/><w:sz w:val="19"/><w:szCs w:val="19"/><w:color w:val="24292F"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Code"><w:name w:val="Code"/><w:basedOn w:val="Normal"/><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="F6F8FA"/><w:spacing w:before="0" w:after="0" w:line="260" w:lineRule="auto"/><w:ind w:left="120" w:right="120"/></w:pPr><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:eastAsia="${CJK_FONT}" w:cs="Consolas"/><w:sz w:val="19"/><w:szCs w:val="19"/><w:color w:val="24292F"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="TableText"><w:name w:val="Table Text"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="20" w:after="20" w:line="260" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="19"/><w:szCs w:val="19"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="Caption"><w:name w:val="caption"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:before="40" w:after="200"/></w:pPr><w:rPr><w:i/><w:sz w:val="18"/><w:szCs w:val="18"/><w:color w:val="57606A"/></w:rPr></w:style>
 <w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="D0D7DE"/><w:left w:val="single" w:sz="4" w:space="0" w:color="D0D7DE"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="D0D7DE"/><w:right w:val="single" w:sz="4" w:space="0" w:color="D0D7DE"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="D0D7DE"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="D0D7DE"/></w:tblBorders></w:tblPr></w:style>
 </w:styles>`
 
-const BULLETS = ['•', '•', '•']
-
 const NUMBERING = HEADER + `<w:numbering xmlns:w="${NS.w}">
 <w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="hybridMultilevel"/>
-${[0, 1, 2].map(level => `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${BULLETS[level]}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${420 + level * 420}" w:hanging="300"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/></w:rPr></w:lvl>`).join('')}
+${[0, 1, 2].map(level => `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${BULLETS[level]}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${420 + level * 420}" w:hanging="300"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="${CJK_FONT}"/></w:rPr></w:lvl>`).join('')}
 </w:abstractNum>
 <w:abstractNum w:abstractNumId="1"><w:multiLevelType w:val="hybridMultilevel"/>
 ${[0, 1, 2].map(level => `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%${level + 1}."/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${420 + level * 420}" w:hanging="360"/></w:pPr></w:lvl>`).join('')}
@@ -91,7 +100,7 @@ function runProperties(run, style = {}) {
   const bold = run.bold || style.bold
   const italic = run.italic || style.italic
   const code = run.code
-  if (code) properties.push('<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/><w:shd w:val="clear" w:color="auto" w:fill="EFF1F3"/>')
+  if (code) properties.push('<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:eastAsia="${CJK_FONT}" w:cs="Consolas"/><w:shd w:val="clear" w:color="auto" w:fill="EFF1F3"/>')
   if (bold) properties.push('<w:b/><w:bCs/>')
   if (italic) properties.push('<w:i/><w:iCs/>')
   if (run.strike) properties.push('<w:strike/>')
