@@ -5,9 +5,8 @@
  * modules (React, cordis, @deepseek-ai/*) resolve through the injected
  * require. md2chat's core files are bundled from ../assets through their
  * CommonJS branch; the lazily loaded vendor renderers are copied to lib/vendor
- * for the Host half to serve, and the native DingTalk/Feishu clipboard writer
- * (native/, md2chat's src-tauri clipboard module) is built for this platform
- * into lib/native. `--no-native` skips cargo.
+ * for the Host half to serve, and the Word writer in src/docx is copied to
+ * lib/docx so the Host can import it without a build step.
  */
 import { cpSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'

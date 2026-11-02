@@ -34,10 +34,10 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "watch": "node scripts/build.mjs --watch --no-native",
+    "watch": "node scripts/build.mjs --watch",
     "dev:patch": "node scripts/dev-patch.mjs",
     "typecheck": "tsc --noEmit",
-    "pretest": "node scripts/build.mjs --no-native",
+    "pretest": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {
