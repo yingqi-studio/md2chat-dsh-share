@@ -30,6 +30,8 @@ const emit = (value) => String(value ?? '')
 const HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
 
 const BULLETS = ['•', '•', '•']
+/** Text column width in twips: A4 minus 1-inch margins. */
+const TEXT_WIDTH_TWIPS = 9360
 
 /**
  * East Asian body font. Word substitutes missing fonts, but LibreOffice and
@@ -139,12 +141,28 @@ function paragraphXml(spans, { style = 'Normal', context, ...paragraph }) {
   return `<w:p><w:pPr>${properties.join('')}</w:pPr>${runs}</w:p>`
 }
 
+/**
+ * Share the text column between the columns by content length: a table of
+ * "环节 | 说明" reads badly when both sides get the same width, and Word has no
+ * auto-fit worth relying on once tblLayout is fixed.
+ */
+function columnWidthsFor(block, columns) {
+  const measure = spans => [...spans.reduce((text, span) => text + span.text, '')]
+    .reduce((width, char) => width + (char.charCodeAt(0) > 0x2e80 ? 2 : 1), 0)
+  const natural = Array.from({ length: columns }, (_, index) => {
+    const cells = [block.header[index] ?? [], ...block.rows.map(row => row[index] ?? [])]
+    return Math.max(4, ...cells.map(measure))
+  })
+  const total = natural.reduce((sum, width) => sum + width, 0)
+  const minimum = Math.floor(TEXT_WIDTH_TWIPS * 0.12)
+  return natural.map(width => Math.max(minimum, Math.round((TEXT_WIDTH_TWIPS * width) / total)))
+}
+
 function tableXml(block, context) {
   const columns = Math.max(block.header.length, ...block.rows.map(row => row.length), 1)
-  const width = Math.floor(5000 / columns)
-  const columnWidth = Math.floor(9360 / columns)
-  const grid = Array.from({ length: columns }, () => `<w:gridCol w:w="${columnWidth}"/>`).join('')
-  const cell = (spans, { header = false, align = null } = {}) => {
+  const columnWidths = columnWidthsFor(block, columns)
+  const grid = columnWidths.map(width => `<w:gridCol w:w="${width}"/>`).join('')
+  const cell = (spans, { header = false, align = null } = {}, index = 0) => {
     const alignment = align ?? null
     const paragraph = paragraphXml(spans.length ? spans : [{ text: '' }], {
       style: 'TableText',
@@ -152,10 +170,10 @@ function tableXml(block, context) {
       alignment,
       runStyle: header ? { bold: true } : {},
     })
-    return `<w:tc><w:tcPr><w:tcW w:w="${Math.round(columnWidth * (width / 5000 * columns))}" w:type="dxa"/>${header ? '<w:shd w:val="clear" w:color="auto" w:fill="DCE7F5"/>' : ''}<w:vAlign w:val="center"/></w:tcPr>${paragraph}</w:tc>`
+    return `<w:tc><w:tcPr><w:tcW w:w="${columnWidths[index]}" w:type="dxa"/>${header ? '<w:shd w:val="clear" w:color="auto" w:fill="DCE7F5"/>' : ''}<w:vAlign w:val="center"/></w:tcPr>${paragraph}</w:tc>`
   }
-  const headerRow = `<w:tr><w:trPr><w:tblHeader/></w:trPr>${block.header.map((spans, index) => cell(spans, { header: true, align: block.align[index] })).join('')}</w:tr>`
-  const bodyRows = block.rows.map(row => `<w:tr>${Array.from({ length: columns }, (_, index) => cell(row[index] ?? [], { align: block.align[index] })).join('')}</w:tr>`).join('')
+  const headerRow = `<w:tr><w:trPr><w:tblHeader/></w:trPr>${block.header.map((spans, index) => cell(spans, { header: true, align: block.align[index] }, index)).join('')}</w:tr>`
+  const bodyRows = block.rows.map(row => `<w:tr>${Array.from({ length: columns }, (_, index) => cell(row[index] ?? [], { align: block.align[index] }, index)).join('')}</w:tr>`).join('')
   const borders = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
     .map(side => `<w:${side} w:val="single" w:sz="4" w:space="0" w:color="D0D7DE"/>`).join('')
   return `<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="9360" w:type="dxa"/><w:tblBorders>${borders}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/><w:top w:w="60" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${headerRow}${bodyRows}</w:tbl><w:p><w:pPr><w:spacing w:after="120"/></w:pPr></w:p>`
@@ -187,7 +205,8 @@ function renderBlock(block, context, style = {}) {
         shading: 'F6F8FA',
         runStyle: { code: true },
       })).join('')
-      return paragraphs
+      // A slim spacer keeps the shaded block from touching the next paragraph.
+      return paragraphs + '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="120" w:lineRule="exact"/></w:pPr></w:p>'
     }
     case 'list': {
       const numId = block.ordered ? 2 : 1

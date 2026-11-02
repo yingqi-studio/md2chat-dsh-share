@@ -72,6 +72,9 @@ test('docx: package contains the Office parts and every block survives', async (
   assert.match(document, /<w:pStyle w:val="Code"\/>/)
   assert.match(document, /<w:numPr>/)
 
+  const grid = [...document.matchAll(/<w:gridCol w:w="(\d+)"\/>/g)].map(match => Number(match[1]))
+  assert.equal(grid.reduce((sum, width) => sum + width, 0), 9360)
+
   const styles = parts.get('word/styles.xml').data.toString('utf8')
   for (const style of ['heading 1', 'Code', 'Quote', 'TableGrid']) assert(styles.includes(style), style)
 })
